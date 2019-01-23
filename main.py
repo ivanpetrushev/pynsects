@@ -1,10 +1,19 @@
 import random
 import pygame
 import math
+import numpy as np
+import sys
+#from nn import NeuralNetwork
+from nn2 import NeuralNetwork
 
 (width, height) = (800, 800)
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Insects simulation')
+
+def renormalize(n, range1, range2):
+    delta1 = range1[1] - range1[0]
+    delta2 = range2[1] - range2[0]
+    return (delta2 * (n - range1[0]) / delta1) + range2[0]
 
 class Insect:
     def __init__(self):
@@ -12,9 +21,24 @@ class Insect:
         self.y = random.randint(0, height)
         self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         self.orientation = 2 * math.pi * random.random()
-        self.size = 20
-        self.health = 100
+        self.size = 10
+        self.health = 1000
         self.isAlive = True
+        self.brain = NeuralNetwork(2, 2, 4)
+
+    def think(self, target):
+        target_orientation = math.atan2(target['food'].y - self.y, target['food'].x - self.x)
+        target_orientation += math.pi 
+        target_orientation = renormalize(target_orientation, [0,  2 * math.pi], [0, 1])
+        distance = renormalize(target['distance'], [0, 1131], [0, 1])
+        inp_vec = [target_orientation, distance]
+        result = self.brain.run(inp_vec)
+#        print('inp', inp_vec, 'result', result)
+        gas = result[0]
+        steer = result[1]
+        gas = renormalize(gas, [0, 1], [0, 15])
+        steer = renormalize(steer, [0, 1], [-3, 3]) 
+        return (gas, steer)
 
     def update(self):
         if not self.isAlive:
@@ -27,8 +51,10 @@ class Insect:
             desired_target['food'].respawn()
             self.health += 20
 
-        gas = self.gas()
-        steer = self.steer()
+        (gas, steer) = self.think(desired_target)
+#        print("GAS: {} STEER: {}".format(gas, steer))
+#        gas = self.gas()
+#        steer = self.steer()
         if gas <= 3:
             return
 
@@ -46,6 +72,7 @@ class Insect:
 
         self.health -= 1
         if self.health <= 0:
+            print("Someone died")
             self.isAlive = False
 
     def steer(self):
@@ -97,7 +124,7 @@ class Food:
 insects = []
 num_insects = 10
 foods = []
-num_food = 50
+num_food = 20
 
 for _ in range(num_insects):
     insect = Insect()
@@ -112,6 +139,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
     screen.fill((255, 255, 255))
 
     for i in insects:
