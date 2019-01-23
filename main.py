@@ -187,6 +187,7 @@ num_insects = 50
 foods = []
 num_food = 60
 mating_pool = []
+max_mating_pool = 50
 mutating_chance = 1 # %
 generation_cntr = 1
 
@@ -199,8 +200,15 @@ for _ in range(num_food):
     foods.append(food)
 
 running = True
+isRunningFast = False
+
 while running:
     for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            print
+            if pygame.key.get_pressed()[pygame.K_s]:
+                isRunningFast ^= 1
+
         if event.type == pygame.QUIT:
             running = False
 
@@ -219,7 +227,7 @@ while running:
 
     # evaluate fitness phase
     if numAlive == 0:
-        (total_food, max_food, avg_food) = (0, 1, 0)
+        (total_food, max_food, avg_food, total_mating_slots) = (0, 1, 0, 0)
         for i in insects:
             total_food += i.cntrFood
             if i.cntrFood >= max_food:
@@ -228,20 +236,21 @@ while running:
         print("Generation: {} food: total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
 
         for i in insects:
-            i.mating_slots = i.cntrFood 
+            i.desired_mating_slots = i.cntrFood 
             # above average score is rewarded with extra mating slots
             if i.cntrFood > avg_food:
                 i.extra_mating_slots = 3 * (i.cntrFood - avg_food)
-                i.mating_slots += i.extra_mating_slots
+                i.desired_mating_slots += i.extra_mating_slots
+                total_mating_slots += i.desired_mating_slots
             
-            print("Individual {} ({}/{}) fed: {} lived: {}, mating slots: {}".format(
-                i.id, i.parentAid, i.parentBid, i.cntrFood, i.cntrLived, i.mating_slots
-                ))
         # mating phase
-        print("Mating phase")
         mating_pool = []
         for i in insects:
-            for c in range(i.mating_slots):
+            mating_slots = round(max_mating_pool * i.desired_mating_slots / total_mating_slots)
+            print("Individual {} ({}/{}) fed: {} lived: {}, desired mating slots: {} actual: {}".format(
+                i.id, i.parentAid, i.parentBid, i.cntrFood, i.cntrLived, i.desired_mating_slots, mating_slots
+                ))
+            for c in range(mating_slots):
                 mating_pool.append(i)
 
         print("Mating pool size: {}".format(len(mating_pool)))
@@ -253,14 +262,15 @@ while running:
             kid.mutate()
             next_generation.append(kid)
 
+	# add a few "blank" minds for the sake of randomness
         for _ in range(3):
             next_generation.append(Insect())
 
-        print("Running next generation")
         insects = next_generation
         generation_cntr += 1
         
 
-    pygame.time.delay(20)
+    if not isRunningFast:
+        pygame.time.delay(20)
 
     pygame.display.flip()
