@@ -17,13 +17,16 @@ def renormalize(n, range1, range2):
 
 class Insect:
     def __init__(self):
+        self.id = random.randint(0, 999999999)
         self.x = random.randint(0, width)
         self.y = random.randint(0, height)
         self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         self.orientation = 2 * math.pi * random.random()
         self.size = 10
-        self.health = 1000
+        self.health = 300
+        self.cntrLived = 0
         self.isAlive = True
+        self.cntrFood = 0
         self.brain = NeuralNetwork(2, 2, 4)
 
     def think(self, target):
@@ -41,6 +44,10 @@ class Insect:
         return (gas, steer)
 
     def update(self):
+        self.health -= 1
+        if self.health <= 0:
+            self.isAlive = False
+
         if not self.isAlive:
             return
 
@@ -50,6 +57,7 @@ class Insect:
         if desired_target['distance'] < self.size:
             desired_target['food'].respawn()
             self.health += 20
+            self.cntrFood += 1
 
         (gas, steer) = self.think(desired_target)
 #        print("GAS: {} STEER: {}".format(gas, steer))
@@ -69,11 +77,7 @@ class Insect:
         self.orientation = math.atan2(target_y - self.y, target_x - self.x)
         self.x = target_x
         self.y = target_y
-
-        self.health -= 1
-        if self.health <= 0:
-            print("Someone died")
-            self.isAlive = False
+        self.cntrLived += 1
 
     def steer(self):
         return random.randint(-3, 3) 
@@ -83,6 +87,8 @@ class Insect:
 
 
     def display(self):
+        if not self.isAlive:
+            return
         # draw body
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.size, 2)
         # draw antennas
@@ -105,6 +111,37 @@ class Insect:
                 min_distance = distance
                 selected_food = i
         return {'food': selected_food, 'distance': min_distance}
+    
+    def mate_with(self, parent):
+        kid = Insect()
+
+        for i in range(1):
+            for j in range(3):
+                kid.brain.W1[i][j] = self.brain.W1[i][j] if random.randint(0, 1) == 0 else parent.brain.W1[i][j]
+
+        for i in range(3):
+            for j in range(1):
+                kid.brain.W2[i][j] = self.brain.W2[i][j] if random.randint(0, 1) == 0 else parent.brain.W2[i][j]
+
+        return kid
+#        print("Brain self W1:", self.brain.W1)
+#        print("Brain self W2:", self.brain.W2)
+#        print("Brain other W1:", parent.brain.W1)
+#        print("Brain other W2:", parent.brain.W2)
+        #genome1 = self.brain.W1
+
+    def mutate(self):
+        if random.randint(0, 100) < mutating_chance:
+            if random.randint(0, 1) == 1:
+                # mutate W1
+                i = random.randint(0, 1)
+                j = random.randint(0, 3)
+                self.brain.W1[i][j] = random.random()
+            else:
+                # mutate W2
+                i = random.randint(0, 3)
+                j = random.randint(0, 1)
+                self.brain.W2[i][j] = random.random()
 
 class Food:
     def __init__(self):
@@ -122,9 +159,12 @@ class Food:
 
 
 insects = []
-num_insects = 10
+num_insects = 30
 foods = []
-num_food = 20
+num_food = 10
+mating_pool = []
+mutating_chance = 1 # %
+generation_cntr = 1
 
 for _ in range(num_insects):
     insect = Insect()
@@ -142,13 +182,56 @@ while running:
 
     screen.fill((255, 255, 255))
 
-    for i in insects:
-        i.update()
-        i.display()
-
     for i in foods:
         i.display()
 
-    pygame.time.delay(100)
+    # population develop phase
+    numAlive = 0
+    for i in insects:
+        i.update()
+        i.display()
+        if i.isAlive:
+            numAlive += 1
+
+    # evaluate fitness phase
+    if numAlive == 0:
+        (total_fitness, max_fitness, avg_fitness) = (0, 0, 0)
+        for i in insects:
+            total_fitness += i.cntrLived
+            if i.cntrLived >= max_fitness:
+                max_fitness = i.cntrLived
+        avg_fitness = int(total_fitness / len(insects))
+        print("Generation: {} fitness: total={} avg={} max={}".format(generation_cntr, total_fitness, avg_fitness, max_fitness))
+
+        for i in insects:
+            i.fitness = i.cntrLived / max_fitness
+            i.partial_fitness = round(100 * i.cntrLived / total_fitness, 2)
+            i.mating_slots = round(num_insects * i.partial_fitness / 100)
+            # above average score is rewarded with extra mating slots
+            if i.cntrLived > avg_fitness:
+                #i.extra_mating_slots = int((i.fitness - average_fitness) * 5)
+                i.extra_mating_slots = i.cntrFood * 2
+                i.mating_slots += i.extra_mating_slots
+            
+            print("Individual {} fed: {} lived: {} fitness: {}, partial: {}, mating slots: {}".format(i.id, i.cntrFood, i.cntrLived, i.fitness, i.partial_fitness, i.mating_slots))
+        # mating phase
+        print("Mating phase")
+        mating_pool = []
+        for i in insects:
+            for c in range(i.mating_slots):
+                mating_pool.append(i)
+        next_generation = []
+        for _ in range(num_insects):
+            parent1 = random.choice(mating_pool)
+            parent2 = random.choice(mating_pool)
+            kid = parent1.mate_with(parent2)
+            kid.mutate()
+            next_generation.append(kid)
+        print("Running next generation")
+        insects = next_generation
+        generation_cntr += 1
+        
+
+#    pygame.time.delay(10)
 
     pygame.display.flip()
