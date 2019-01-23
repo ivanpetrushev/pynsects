@@ -233,13 +233,13 @@ while running:
             if i.cntrFood >= max_food:
                 max_food = i.cntrFood
         avg_food = int(total_food / len(insects))
-        print("Generation: {} food: total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
+        print("Generation: {} food total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
 
         for i in insects:
             i.desired_mating_slots = i.cntrFood 
             # above average score is rewarded with extra mating slots
             if i.cntrFood > avg_food:
-                i.extra_mating_slots = 3 * (i.cntrFood - avg_food)
+                i.extra_mating_slots = (i.cntrFood - avg_food) ** 2
                 i.desired_mating_slots += i.extra_mating_slots
                 total_mating_slots += i.desired_mating_slots
             
