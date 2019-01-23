@@ -4,8 +4,13 @@ import math
 import numpy as np
 import sys
 import string
+import time
 #from nn import NeuralNetwork
 from nn2 import NeuralNetwork
+
+results_filename = "results_" + str(time.time()) + ".csv"
+fp = open(results_filename, 'a')
+fp.write("generation,total,avg,max\n")
 
 (width, height) = (800, 800)
 screen = pygame.display.set_mode((width, height))
@@ -200,7 +205,7 @@ for _ in range(num_food):
     foods.append(food)
 
 running = True
-isRunningFast = False
+isRunningFast = True 
 
 while running:
     for event in pygame.event.get():
@@ -234,6 +239,9 @@ while running:
                 max_food = i.cntrFood
         avg_food = int(total_food / len(insects))
         print("Generation: {} food total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
+        fp = open(results_filename, 'a')
+        fp.write("{},{},{},{}\n".format(generation_cntr, total_food, avg_food, max_food))
+        fp.close()
 
         for i in insects:
             i.desired_mating_slots = i.cntrFood 
@@ -261,10 +269,6 @@ while running:
             kid = parent1.mate_with(parent2)
             kid.mutate()
             next_generation.append(kid)
-
-	# add a few "blank" minds for the sake of randomness
-        for _ in range(3):
-            next_generation.append(Insect())
 
         insects = next_generation
         generation_cntr += 1
