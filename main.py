@@ -188,12 +188,12 @@ class Food:
 
 
 insects = []
-num_insects = 50
+num_insects = 300
 foods = []
 num_food = 60
 mating_pool = []
-max_mating_pool = 50
-mutating_chance = 1 # %
+max_mating_pool = 150
+mutating_chance = 5 # %
 generation_cntr = 1
 
 for _ in range(num_insects):
@@ -238,7 +238,6 @@ while running:
             if i.cntrFood >= max_food:
                 max_food = i.cntrFood
         avg_food = int(total_food / len(insects))
-        print("Generation: {} food total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
         fp = open(results_filename, 'a')
         fp.write("{},{},{},{}\n".format(generation_cntr, total_food, avg_food, max_food))
         fp.close()
@@ -261,6 +260,7 @@ while running:
             for c in range(mating_slots):
                 mating_pool.append(i)
 
+        print("Generation: {} food total={} avg={} max={}".format(generation_cntr, total_food, avg_food, max_food))
         print("Mating pool size: {}".format(len(mating_pool)))
         next_generation = []
         for _ in range(num_insects):
