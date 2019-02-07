@@ -190,7 +190,7 @@ class Food:
 insects = []
 num_insects = 300
 foods = []
-num_food = 60
+num_food = 80
 mating_pool = []
 max_mating_pool = 150
 mutating_chance = 5 # %
